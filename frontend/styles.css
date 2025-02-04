@@ -1,5 +1,6 @@
 body {
   margin: 0;
+  padding: 0;
   display: flex;
   height: 100vh;
   background: black;
@@ -9,19 +10,38 @@ body {
 /* Left Panel - IFC BIM Viewer Placeholder */
 #bim-viewer {
   width: 50%;
-  background: #222;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  height: 100%;
+  position: relative;
+}
+
+#viewer-container {
+  width: 100%;
+  height: 100%;
+}
+
+#file-input {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 100;
+}
+
+#loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.7);
   color: white;
-  font-size: 24px;
-  font-weight: bold;
+  padding: 10px 20px;
+  border-radius: 5px;
+  z-index: 100;
 }
 
 /* Right Panel - Graph Database Visualization */
 #graph-container {
   width: 50%;
-  position: relative;
+  height: 100%;
 }
 
 svg {
@@ -44,4 +64,39 @@ svg {
 text {
   fill: white;
   font-size: 12px;
+}
+
+
+/* IFC Viewer */
+
+
+.options-menu {
+  position: fixed;
+  min-width: unset;
+  top: 5px;
+  right: 5px;
+  max-height: calc(100vh - 10px);
+}
+
+.phone-menu-toggler {
+  visibility: hidden;
+}
+
+@media (max-width: 480px) {
+  .options-menu {
+      visibility: hidden;
+      bottom: 5px;
+      left: 5px;
+  }
+
+  .options-menu-visible {
+      visibility: visible;
+  }
+
+  .phone-menu-toggler {
+      visibility: visible;
+      position: fixed;
+      top: 5px;
+      right: 5px;
+  }
 }

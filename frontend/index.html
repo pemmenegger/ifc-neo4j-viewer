@@ -13,7 +13,14 @@
   </head>
   <body>
     <!-- Left Panel for IFC BIM Viewer -->
-    <div id="bim-viewer">IFC BIM Viewer (Placeholder)</div>
+    <div id="bim-viewer">
+      <div id="container"></div>
+
+<!-- 
+      <div id="viewer-container"></div>
+      <input type="file" id="file-input" accept=".ifc"/>
+      <div id="loading" style="display: none;">Loading model...</div> -->
+    </div>
 
     <!-- Right Panel for Graph Visualization -->
     <div id="graph-container">
@@ -21,6 +28,7 @@
     </div>
 
     <!-- External JavaScript -->
+    <script type="module" src="ifcViewer.ts"></script>
     <script src="neo4jViewer.js"></script>
   </body>
 </html>
