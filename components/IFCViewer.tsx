@@ -8,7 +8,7 @@ export default function IFCViewer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef<HTMLDivElement>(null);
 
-  let world: OBC.World<OBC.SimpleScene, OBC.SimpleCamera, OBC.SimpleRenderer>;
+  let world: OBC.SimpleWorld<OBC.SimpleScene, OBC.SimpleCamera, OBC.SimpleRenderer>;
   let fragmentIfcLoader: OBC.IfcLoader;
   let fragments: OBC.FragmentsManager;
 
@@ -64,7 +64,7 @@ export default function IFCViewer() {
       const data = await file.arrayBuffer();
       const buffer = new Uint8Array(data);
       const model = await fragmentIfcLoader.load(buffer);
-      model.name = "sample";
+      // model.name = "sample";
       world.scene.three.add(model);
     } catch (error) {
       console.error("Error loading sample IFC:", error);
@@ -84,7 +84,7 @@ export default function IFCViewer() {
     try {
       const buffer = await file.arrayBuffer();
       const model = await fragmentIfcLoader.load(new Uint8Array(buffer));
-      model.name = file.name;
+      // model.name = file.name;
       world.scene.three.add(model);
     } catch (error) {
       console.error("Error loading uploaded IFC:", error);
