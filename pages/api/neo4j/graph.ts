@@ -1,5 +1,5 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import neo4j from 'neo4j-driver';
+import type { NextApiRequest, NextApiResponse } from "next";
+import neo4j from "neo4j-driver";
 
 type ResponseData = {
   success: boolean;
@@ -11,10 +11,10 @@ type ResponseData = {
 };
 
 const driver = neo4j.driver(
-  process.env.NEO4J_URI || 'bolt://localhost:7687',
+  process.env.NEO4J_URI || "bolt://localhost:7687",
   neo4j.auth.basic(
-    process.env.NEO4J_USER || 'neo4j',
-    process.env.NEO4J_PASSWORD || 'password'
+    process.env.NEO4J_USER || "neo4j",
+    process.env.NEO4J_PASSWORD || "password"
   )
 );
 
@@ -22,8 +22,10 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ResponseData>
 ) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ success: false, message: 'Method not allowed' });
+  if (req.method !== "GET") {
+    return res
+      .status(405)
+      .json({ success: false, message: "Method not allowed" });
   }
 
   const session = driver.session();
@@ -40,27 +42,27 @@ export default async function handler(
     const nodes = new Map();
     const links: any[] = [];
 
-    result.records.forEach(record => {
+    result.records.forEach((record) => {
       // Process start node
-      const startNode = record.get('n');
+      const startNode = record.get("n");
       if (!nodes.has(startNode.identity.toString())) {
         nodes.set(startNode.identity.toString(), {
           id: startNode.identity.toString(),
           labels: startNode.labels,
-          properties: startNode.properties
+          properties: startNode.properties,
         });
       }
 
       // Process relationship and end node if they exist
-      const rel = record.get('r');
-      const endNode = record.get('m');
-      
+      const rel = record.get("r");
+      const endNode = record.get("m");
+
       if (rel && endNode) {
         if (!nodes.has(endNode.identity.toString())) {
           nodes.set(endNode.identity.toString(), {
             id: endNode.identity.toString(),
             labels: endNode.labels,
-            properties: endNode.properties
+            properties: endNode.properties,
           });
         }
 
@@ -68,7 +70,7 @@ export default async function handler(
           source: startNode.identity.toString(),
           target: endNode.identity.toString(),
           type: rel.type,
-          properties: rel.properties
+          properties: rel.properties,
         });
       }
     });
@@ -77,17 +79,16 @@ export default async function handler(
       success: true,
       data: {
         nodes: Array.from(nodes.values()),
-        links
-      }
+        links,
+      },
     });
-
   } catch (error) {
-    console.error('Error fetching graph data:', error);
+    console.error("Error fetching graph data:", error);
     return res.status(500).json({
       success: false,
-      message: 'Error fetching graph data'
+      message: "Error fetching graph data",
     });
   } finally {
     await session.close();
   }
-} 
+}
