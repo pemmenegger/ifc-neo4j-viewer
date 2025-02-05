@@ -12,12 +12,11 @@ interface IFCViewerProps {
 }
 
 export default function IFCViewer({ onElementSelect }: IFCViewerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const loadingRef = useRef<HTMLDivElement>(null);
   const [properties, setProperties] = useState<any>(null);
   const [currentModel, setCurrentModel] = useState<FRAGS.FragmentsGroup | null>(null);
-  
-  // Add refs for the core variables
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const loadingRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<OBC.SimpleWorld<OBC.SimpleScene, OBC.SimpleCamera, OBC.SimpleRenderer>>(null);
   const fragmentIfcLoaderRef = useRef<OBC.IfcLoader>(null);
   const fragmentsRef = useRef<OBC.FragmentsManager>(null);
