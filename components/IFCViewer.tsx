@@ -1,16 +1,20 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as WEBIFC from "web-ifc";
 import * as OBC from "@thatopen/components";
+import * as OBF from "@thatopen/components-front";
+import * as FRAGS from "@thatopen/fragments";
 
 export default function IFCViewer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef<HTMLDivElement>(null);
+  const [properties, setProperties] = useState<any>(null);
 
   let world: OBC.SimpleWorld<OBC.SimpleScene, OBC.SimpleCamera, OBC.SimpleRenderer>;
   let fragmentIfcLoader: OBC.IfcLoader;
   let fragments: OBC.FragmentsManager;
+  let highlighter: OBF.Highlighter;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -18,11 +22,7 @@ export default function IFCViewer() {
     const components = new OBC.Components();
     const worlds = components.get(OBC.Worlds);
 
-    world = worlds.create<
-      OBC.SimpleScene,
-      OBC.SimpleCamera,
-      OBC.SimpleRenderer
-    >();
+    world = worlds.create<OBC.SimpleScene, OBC.SimpleCamera, OBC.SimpleRenderer>();
     world.scene = new OBC.SimpleScene(components);
     world.renderer = new OBC.SimpleRenderer(components, containerRef.current);
     world.camera = new OBC.SimpleCamera(components);
@@ -50,6 +50,16 @@ export default function IFCViewer() {
     }
     fragmentIfcLoader.settings.webIfc.COORDINATE_TO_ORIGIN = true;
 
+    highlighter = components.get(OBF.Highlighter);
+    highlighter.setup({ world });
+
+    highlighter.events.select.onHighlight.add(async (fragmentIdMap) => {
+      const propertiesData = await computeTableData(components, fragmentIdMap);
+      setProperties(propertiesData);
+    });
+
+    highlighter.events.select.onClear.add(() => setProperties(null));
+
     return () => {
       components?.dispose();
     };
@@ -58,13 +68,10 @@ export default function IFCViewer() {
   const loadSampleIfc = async () => {
     if (loadingRef.current) loadingRef.current.style.display = "block";
     try {
-      const file = await fetch(
-        "https://thatopen.github.io/engine_components/resources/small.ifc"
-      );
+      const file = await fetch("https://thatopen.github.io/engine_components/resources/small.ifc");
       const data = await file.arrayBuffer();
       const buffer = new Uint8Array(data);
       const model = await fragmentIfcLoader.load(buffer);
-      // model.name = "sample";
       world.scene.three.add(model);
     } catch (error) {
       console.error("Error loading sample IFC:", error);
@@ -73,9 +80,7 @@ export default function IFCViewer() {
     }
   };
 
-  const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -84,7 +89,6 @@ export default function IFCViewer() {
     try {
       const buffer = await file.arrayBuffer();
       const model = await fragmentIfcLoader.load(new Uint8Array(buffer));
-      // model.name = file.name;
       world.scene.three.add(model);
     } catch (error) {
       console.error("Error loading uploaded IFC:", error);
@@ -95,6 +99,7 @@ export default function IFCViewer() {
 
   const clearScene = () => {
     fragments.dispose();
+    setProperties(null);
   };
 
   return (
@@ -127,6 +132,35 @@ export default function IFCViewer() {
       >
         Loading model...
       </div>
+      {properties && (
+        <div className="absolute top-5 right-5 z-10 bg-black p-4 rounded shadow-md max-w-xs overflow-auto max-h-96">
+          <h3 className="text-lg font-semibold mb-2">Element Properties</h3>
+          <pre className="text-sm whitespace-pre-wrap break-words">
+            {JSON.stringify(properties, null, 2)}
+          </pre>
+        </div>
+      )}
     </div>
   );
+}
+
+async function computeTableData(components: OBC.Components, fragmentIdMap: FRAGS.FragmentIdMap) {
+  const indexer = components.get(OBC.IfcRelationsIndexer);
+  const fragments = components.get(OBC.FragmentsManager);
+  const modelIdMap = fragments.getModelIdMap(fragmentIdMap);
+
+  const propertiesData: { [key: string]: any } = {};
+
+  for (const modelID in modelIdMap) {
+    const model = fragments.groups.get(modelID);
+    if (!model) continue;
+    const expressIDs = modelIdMap[modelID];
+    for (const expressID of expressIDs) {
+      const elementAttrs = await model.getProperties(expressID);
+      if (!elementAttrs) continue;
+      propertiesData[elementAttrs.Name?.value || `Element ${expressID}`] = elementAttrs;
+    }
+  }
+
+  return propertiesData;
 }
