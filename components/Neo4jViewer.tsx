@@ -20,13 +20,22 @@ interface GraphData {
   links: Link[];
 }
 
-export default function Neo4jViewer() {
+interface Neo4jViewerProps {
+  guid?: string;
+}
+
+export default function Neo4jViewer({ guid }: Neo4jViewerProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
     const fetchGraphData = async () => {
       try {
-        const response = await fetch("/api/neo4j/graph");
+        // Add GUID as query parameter if it exists
+        const url = guid 
+          ? `/api/neo4j/graph?guid=${encodeURIComponent(guid)}`
+          : '/api/neo4j/graph';
+          
+        const response = await fetch(url);
         const result = await response.json();
 
         if (result.success && result.data) {
@@ -38,7 +47,7 @@ export default function Neo4jViewer() {
     };
 
     fetchGraphData();
-  }, []);
+  }, [guid]); // Re-run effect when GUID changes
 
   const createForceGraph = (data: GraphData) => {
     if (!svgRef.current) return;

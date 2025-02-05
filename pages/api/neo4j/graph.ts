@@ -29,14 +29,30 @@ export default async function handler(
   }
 
   const session = driver.session();
+  const { guid } = req.query;
 
   try {
-    // Query to get all nodes and relationships
-    const result = await session.run(`
-      MATCH (n)
-      OPTIONAL MATCH (n)-[r]->(m)
-      RETURN n, r, m
-    `);
+    let query: string;
+    let parameters = {};
+
+    // Choose query based on whether GUID is provided
+    if (guid) {
+      query = `
+        MATCH (n)-[r]-(adj)
+        WHERE n.GUID = $guid
+        RETURN n, r, adj
+      `;
+      parameters = { guid };
+    } else {
+      query = `
+        MATCH (n)
+        OPTIONAL MATCH (n)-[r]->(m)
+        RETURN n, r, m
+      `;
+    }
+
+    // Execute query with parameters
+    const result = await session.run(query, parameters);
 
     // Process nodes and relationships
     const nodes = new Map();
@@ -55,7 +71,7 @@ export default async function handler(
 
       // Process relationship and end node if they exist
       const rel = record.get("r");
-      const endNode = record.get("m");
+      const endNode = record.get(guid ? "adj" : "m");
 
       if (rel && endNode) {
         if (!nodes.has(endNode.identity.toString())) {

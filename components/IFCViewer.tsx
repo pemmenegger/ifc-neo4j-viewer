@@ -7,23 +7,32 @@ import * as OBF from "@thatopen/components-front";
 import * as FRAGS from "@thatopen/fragments";
 import PropertyViewer from './PropertyViewer';
 
-export default function IFCViewer() {
+interface IFCViewerProps {
+  onElementSelect?: (globalId: string | null) => void;
+}
+
+export default function IFCViewer({ onElementSelect }: IFCViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef<HTMLDivElement>(null);
   const [properties, setProperties] = useState<any>(null);
-
-  let world: OBC.SimpleWorld<OBC.SimpleScene, OBC.SimpleCamera, OBC.SimpleRenderer>;
-  let fragmentIfcLoader: OBC.IfcLoader;
-  let fragments: OBC.FragmentsManager;
-  let highlighter: OBF.Highlighter;
+  const [currentModel, setCurrentModel] = useState<FRAGS.FragmentsGroup | null>(null);
+  
+  // Add refs for the core variables
+  const worldRef = useRef<OBC.SimpleWorld<OBC.SimpleScene, OBC.SimpleCamera, OBC.SimpleRenderer>>(null);
+  const fragmentIfcLoaderRef = useRef<OBC.IfcLoader>(null);
+  const fragmentsRef = useRef<OBC.FragmentsManager>(null);
+  const highlighterRef = useRef<OBF.Highlighter>(null);
+  const componentsRef = useRef<OBC.Components>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     const components = new OBC.Components();
+    componentsRef.current = components;
     const worlds = components.get(OBC.Worlds);
 
-    world = worlds.create<OBC.SimpleScene, OBC.SimpleCamera, OBC.SimpleRenderer>();
+    worldRef.current = worlds.create<OBC.SimpleScene, OBC.SimpleCamera, OBC.SimpleRenderer>();
+    const world = worldRef.current;
     world.scene = new OBC.SimpleScene(components);
     world.renderer = new OBC.SimpleRenderer(components, containerRef.current);
     world.camera = new OBC.SimpleCamera(components);
@@ -37,9 +46,9 @@ export default function IFCViewer() {
 
     world.scene.three.background = null;
 
-    fragments = components.get(OBC.FragmentsManager);
-    fragmentIfcLoader = components.get(OBC.IfcLoader);
-    fragmentIfcLoader.setup();
+    fragmentsRef.current = components.get(OBC.FragmentsManager);
+    fragmentIfcLoaderRef.current = components.get(OBC.IfcLoader);
+    fragmentIfcLoaderRef.current.setup();
 
     const excludedCats = [
       WEBIFC.IFCTENDONANCHOR,
@@ -47,33 +56,61 @@ export default function IFCViewer() {
       WEBIFC.IFCREINFORCINGELEMENT,
     ];
     for (const cat of excludedCats) {
-      fragmentIfcLoader.settings.excludedCategories.add(cat);
+      fragmentIfcLoaderRef.current.settings.excludedCategories.add(cat);
     }
-    fragmentIfcLoader.settings.webIfc.COORDINATE_TO_ORIGIN = true;
+    fragmentIfcLoaderRef.current.settings.webIfc.COORDINATE_TO_ORIGIN = true;
 
-    highlighter = components.get(OBF.Highlighter);
-    highlighter.setup({ world });
-
-    highlighter.events.select.onHighlight.add(async (fragmentIdMap) => {
-      const propertiesData = await computeTableData(components, fragmentIdMap);
-      setProperties(propertiesData);
-    });
-
-    highlighter.events.select.onClear.add(() => setProperties(null));
+    highlighterRef.current = components.get(OBF.Highlighter);
+    highlighterRef.current.setup({ world });
 
     return () => {
       components?.dispose();
     };
-  }, []);
+  }, []); 
+
+  useEffect(() => {
+    if (!highlighterRef.current) return;
+
+    const handleHighlight = async (fragmentIdMap: FRAGS.FragmentIdMap) => {
+      const propertiesData = await computeTableData(componentsRef.current!, fragmentIdMap);
+      setProperties(propertiesData);
+      
+      const firstElementId = Object.values(propertiesData)[0]?.GlobalId?.value || null;
+      onElementSelect?.(firstElementId);
+    };
+
+    const handleClear = () => {
+      setProperties(null);
+      onElementSelect?.(null);
+    };
+
+    highlighterRef.current.events.select.onHighlight.add(handleHighlight);
+    highlighterRef.current.events.select.onClear.add(handleClear);
+
+    return () => {
+      highlighterRef.current?.events.select.onHighlight.remove(handleHighlight);
+      highlighterRef.current?.events.select.onClear.remove(handleClear);
+    };
+  }, [onElementSelect]);
 
   const loadSampleIfc = async () => {
     if (loadingRef.current) loadingRef.current.style.display = "block";
     try {
+      if (currentModel) {
+        worldRef.current?.scene.three.remove(currentModel);
+        fragmentsRef.current?.dispose();
+        setCurrentModel(null);
+        setProperties(null);
+      }
+
       const file = await fetch("https://thatopen.github.io/engine_components/resources/small.ifc");
       const data = await file.arrayBuffer();
       const buffer = new Uint8Array(data);
-      const model = await fragmentIfcLoader.load(buffer);
-      world.scene.three.add(model);
+      const model = await fragmentIfcLoaderRef.current?.load(buffer);
+      if (model) {
+        worldRef.current?.scene.three.add(model);
+        setCurrentModel(model);
+      }
     } catch (error) {
       console.error("Error loading sample IFC:", error);
     } finally {
@@ -88,9 +125,19 @@ export default function IFCViewer() {
     if (loadingRef.current) loadingRef.current.style.display = "block";
 
     try {
+      if (currentModel) {
+        worldRef.current?.scene.three.remove(currentModel);
+        fragmentsRef.current?.dispose();
+        setCurrentModel(null);
+        setProperties(null);
+      }
+
       const buffer = await file.arrayBuffer();
-      const model = await fragmentIfcLoader.load(new Uint8Array(buffer));
-      world.scene.three.add(model);
+      const model = await fragmentIfcLoaderRef.current?.load(new Uint8Array(buffer));
+      if (model) {
+        worldRef.current?.scene.three.add(model);
+        setCurrentModel(model);
+      }
     } catch (error) {
       console.error("Error loading uploaded IFC:", error);
     } finally {
@@ -99,8 +146,13 @@ export default function IFCViewer() {
   };
 
   const clearScene = () => {
-    fragments.dispose();
-    setProperties(null);
+    if (currentModel) {
+      worldRef.current?.scene.three.remove(currentModel);
+      fragmentsRef.current?.dispose();
+      setCurrentModel(null);
+      setProperties(null);
+      onElementSelect?.(null);
+    }
   };
 
   return (
