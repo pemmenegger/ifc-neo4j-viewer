@@ -5,6 +5,7 @@ import * as WEBIFC from "web-ifc";
 import * as OBC from "@thatopen/components";
 import * as OBF from "@thatopen/components-front";
 import * as FRAGS from "@thatopen/fragments";
+import PropertyViewer from './PropertyViewer';
 
 export default function IFCViewer() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -133,11 +134,9 @@ export default function IFCViewer() {
         Loading model...
       </div>
       {properties && (
-        <div className="absolute top-5 right-5 z-10 bg-black p-4 rounded shadow-md max-w-xs overflow-auto max-h-96">
-          <h3 className="text-lg font-semibold mb-2">Element Properties</h3>
-          <pre className="text-sm whitespace-pre-wrap break-words">
-            {JSON.stringify(properties, null, 2)}
-          </pre>
+        <div className="absolute top-5 right-5 z-10 bg-black/90 p-4 rounded shadow-md max-w-md overflow-auto max-h-[80vh]">
+          <h3 className="text-lg font-semibold mb-2 text-white">Element Properties</h3>
+          <PropertyViewer data={properties} />
         </div>
       )}
     </div>
